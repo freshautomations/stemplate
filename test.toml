@@ -1,0 +1,12 @@
+user = "guest"
+filename = "test"
+list = [
+    "first",
+    "second",
+    "third"
+]
+gospecific = ["Go", "lang"]
+
+[map]
+test = "testmap"
+nottest = "not a test map"

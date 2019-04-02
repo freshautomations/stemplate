@@ -1,0 +1,8 @@
+Hi {{ .user }}!
+
+Welcome to this {{ .filename }} template demonstration.
+
+You should see a few examples of
+* List item: {{ index .list 0 }}
+* Map item: {{ .map.test }}
+* {{ index .gospecific 0 -}} {{ index .gospecific 1 }} specific {{ print "stuff" }}

@@ -1,0 +1,17 @@
+---
+
+user: guest
+filename: test
+
+list:
+    - first
+    - second
+    - third
+
+map:
+    test: testmap
+    nottest: "not a test map"
+
+gospecific:
+    - Go
+    - lang
