@@ -32,8 +32,9 @@ if [[ $ERR -ne 0 ]]; then
   exit $ERR
 fi
 
-#The proof of the pudding is the eating. - Cervantes
-export id="`build/stoml_linux_amd64 draft.json id`"
+wget -q "https://github.com/freshautomations/stoml/releases/download/v${STOML_VERSION}/stoml_linux_amd64"
+chmod +x ./stoml_linux_amd64
+export id="`./stoml_linux_amd64 draft.json id`"
 if [ -z "$id" ]; then
   echo "ERROR: Could not get draft id."
   exit 1
@@ -57,8 +58,6 @@ if [[ $ERR -ne 0 ]]; then
   exit $ERR
 fi
 
-wget -q "https://github.com/freshautomations/stoml/releases/download/v${STOML_VERSION}/stoml_linux_amd64"
-chmod +x ./stoml_linux_amd64
 export uid="`./stoml_linux_amd64 upload.json id`"
 if [ -z "$uid" ]; then
   echo "ERROR: Could not get upload id for binary ${binary}."

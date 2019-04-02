@@ -30,6 +30,7 @@ stemplate dictionary.json file.template
 ```
 
 Check the `test.json` and `test.template` files for an [example](#example).
+
 Optionally, you can use the `--output` or `-o` flags to add a file where the result will be written,
 instead of the default `stdout`.
 
