@@ -3,7 +3,7 @@
 ## What is it
 STemplate is a simple template parser for the Linux Shell (bash, ksh, csh, etc).
 The purpose is to easily parse templates and fill them in with values from a "dictionary" file.
-See the [example](#example) below for a quick introduction.
+See the [examples](#examples) below for a quick introduction.
 
 The template file contains placeholders and the dictionary file contains key=value pairs. STemplate will
 take the dictionary file and fill in the template file placeholders.
@@ -26,19 +26,41 @@ GO111MODULE=on go get github.com/freshautomations/stemplate.git
 
 ## How to use
 ```$bash
-stemplate dictionary.json file.template 
+stemplate my.template --file dictionary.json
+```
+OR
+```$bash
+export envvar1="value1"
+export envvar2="value2"
+export envlist1="listitem1,listitem2"
+export envlist2="listitem3"
+export envmap1="mapkey1=mapvalue1,mapkey2=mapvalue2"
+stemplate my.template --string envvar1,envvar2 --list envlist1,envlist2 --map envmap1
 ```
 
-Check the `test.json` and `test.template` files for an [example](#example).
+Check the [examples](#examples) section for more.
+
+* `--file` will load the content of the filename as the data structure
+* `--string` will evaluate the content of the environment variables as a string.
+* `--list` will evaluate the content of the environment variables as a comma-separated list of strings.
+* `--map` will evaluate the content of the environment variables as a comma-separated list of key-value pairs where both key and value are strings.
+
+When using the `--file` parameter, the dictionary file can contain complex variable definitions, like maps within a list.
+
+When using environment variables with any of the `--string`, `--list` or `--map` parameters, the values have to be simple string values.
+
+When using both `--file` and any of the environment variables flags, the resultant data structure is the combination of both data sets.
+If the same variable name is used in both the file and an environment variable, the environment variable will take precedence.
 
 Optionally, you can use the `--output` or `-o` flags to add a file where the result will be written,
 instead of the default `stdout`.
 
 ## Caveats
-None that I know of. Admittedly, I use it for simple things. Usually, Bash does not require very complex configurations.
+Using the `--file` parameter will allow the full extent of the Golang text/template package to be used, while using environment variables will only allow string values.
 
-## Example
+## Examples
 
+## Using `--file`
 Template file `test.template`:
 ```
 Hi {{ .user }}!
@@ -72,7 +94,7 @@ gospecific:
 
 Run:
 ```bash
-stemplate test.yaml test.template --output result.txt
+stemplate test.template --file test.yaml --output result.txt
 ```
 
 Result in `result.txt`:
@@ -86,3 +108,16 @@ You should see a few examples of
 * Map item: testmap
 * Golang specific stuff
 ```
+
+## Using environment variables
+Assume the `test.template` file from the above example. Run
+```bash
+export user="guest"
+export filename="test"
+export list="first,second,third"
+export gospecific="Go,lang"
+export map="test=testmap,nottest=not a test map"
+stemplate test.template --string user,filename --list list,gospecific --map map
+```
+
+The result will be the same as `result.txt`, only this time it will be printed on the standard output.

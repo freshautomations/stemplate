@@ -1,16 +1,15 @@
 package cmd
 
 import (
-	"bytes"
 	"github.com/freshautomations/stemplate/defaults"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
-	"io"
+	"io/ioutil"
 	"os"
 	"testing"
 )
 
-const testresult = `Hi guest!
+var testresult = `Hi guest!
 
 Welcome to this test template demonstration.
 
@@ -20,33 +19,6 @@ You should see a few examples of
 * Golang specific stuff
 `
 
-type stdoutRedirect struct {
-	r, w, old *os.File
-}
-
-// How to redirect stdout: https://stackoverflow.com/questions/10473800/in-go-how-do-i-capture-stdout-of-a-function-into-a-string
-func redirectStdOut() (out stdoutRedirect) {
-	out.old = os.Stdout // keep backup of the real stdout
-	out.r, out.w, _ = os.Pipe()
-	os.Stdout = out.w
-	return
-}
-
-func readAndResetStdOut(in stdoutRedirect) string {
-	outC := make(chan string)
-	// copy the output in a separate goroutine so printing can't block indefinitely
-	go func() {
-		var buf bytes.Buffer
-		io.Copy(&buf, in.r)
-		outC <- buf.String()
-	}()
-
-	// back to normal state
-	in.w.Close()
-	os.Stdout = in.old
-	return <-outC
-}
-
 func TestCheckArgs(t *testing.T) {
 	cmd := &cobra.Command{
 		Args: func(cmd *cobra.Command, args []string) error {
@@ -55,10 +27,11 @@ func TestCheckArgs(t *testing.T) {
 		Version: defaults.Version,
 	}
 
-	assert.NotNil(t, CheckArgs(cmd, []string{"../test.json"}), "enough parameters")
-	assert.NotNil(t, CheckArgs(cmd, []string{"notexist.json", "../test.template"}), "file found")
-	assert.NotNil(t, CheckArgs(cmd, []string{"../test.json", "../notexist.template"}), "file found")
-	assert.Nil(t, CheckArgs(cmd, []string{"../test.json", "../test.template"}), "parameter check")
+	assert.NotNil(t, CheckArgs(cmd, []string{"../test.template", "../test.json"}), "enough parameters")
+	assert.NotNil(t, CheckArgs(cmd, []string{"notexist.json"}), "file found")
+	assert.NotNil(t, CheckArgs(cmd, []string{"../test.template"}), "file found")
+	flags.File = "../test.json"
+	assert.Nil(t, CheckArgs(cmd, []string{"../test.template"}), "parameter check")
 }
 
 func TestRunRoot(t *testing.T) {
@@ -69,22 +42,45 @@ func TestRunRoot(t *testing.T) {
 		Version: defaults.Version,
 	}
 
-	var stdO stdoutRedirect
+	var resultfile []byte
 	var err error
 
-	stdO = redirectStdOut()
-	_, err = RunRoot(cmd,[]string{"../test.json", "../test.template"})
-	assert.Equal(t, testresult, readAndResetStdOut(stdO), "unexpected result")
+	flags.Output = "jsonresult.tmp"
+	flags.File = "../test.json"
+	_, err = RunRoot(cmd,[]string{"../test.template"})
+	resultfile, err = ioutil.ReadFile(flags.Output)
+	assert.Equal(t, string(resultfile), testresult, "unexpected result")
 	assert.Nil(t, err, "unexpected error")
+	_ = os.Remove(flags.Output)
 
-	stdO = redirectStdOut()
-	_, err = RunRoot(cmd,[]string{"../test.toml", "../test.template"})
-	assert.Equal(t, testresult, readAndResetStdOut(stdO), "unexpected result")
+	flags.Output = "tomlresult.tmp"
+	flags.File = "../test.toml"
+	_, err = RunRoot(cmd,[]string{"../test.template"})
+	resultfile, err = ioutil.ReadFile(flags.Output)
+	assert.Equal(t, string(resultfile), testresult, "unexpected result")
 	assert.Nil(t, err, "unexpected error")
+	_ = os.Remove(flags.Output)
 
-	stdO = redirectStdOut()
-	_, err = RunRoot(cmd,[]string{"../test.yaml", "../test.template"})
-	assert.Equal(t, testresult, readAndResetStdOut(stdO), "unexpected result")
+	flags.Output = "yamlresult.tmp"
+	flags.File = "../test.yaml"
+	_, err = RunRoot(cmd,[]string{"../test.template"})
+	assert.Equal(t, string(resultfile), testresult, "unexpected result")
 	assert.Nil(t, err, "unexpected error")
+	_ = os.Remove(flags.Output)
+
+	flags.Output = "emvresult.tmp"
+	flags.File = ""
+	flags.String = "user,filename"
+	flags.List = "list,gospecific"
+	flags.Map = "map"
+	_ = os.Setenv("user","guest")
+	_ = os.Setenv("filename","test")
+	_ = os.Setenv("list","first,second,third")
+	_ = os.Setenv("gospecific","Go,lang")
+	_ = os.Setenv("map","test=testmap,nottest='not a testmap'")
+	_, err = RunRoot(cmd,[]string{"../test.template"})
+	assert.Equal(t, string(resultfile), testresult, "unexpected result")
+	assert.Nil(t, err, "unexpected error")
+	_ = os.Remove(flags.Output)
 
 }
