@@ -6,5 +6,5 @@ import (
 )
 
 func TestVersion(t *testing.T) {
-	assert.NotEmpty(t,Version,"empty version")
+	assert.NotEmpty(t, Version, "empty version")
 }

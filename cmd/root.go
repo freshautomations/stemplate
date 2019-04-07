@@ -8,51 +8,62 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/template"
 )
 
 type FlagsType struct {
-	File string
-	String string
-	List string
-	Map string
-	Output string
+	File      string
+	String    string
+	List      string
+	Map       string
+	Output    string
+	Extension string
+	All       bool
 }
 
-var flags FlagsType
+var inputFlags FlagsType
 
-func CheckArgs(cmd *cobra.Command, args []string) error {
+func CheckArgs(cmd *cobra.Command, args []string) (err error) {
 	validateArgs := cobra.ExactArgs(1)
-	if err := validateArgs(cmd, args); err != nil {
-		return err
+	if err = validateArgs(cmd, args); err != nil {
+		return
 	}
 
-	if flags.File == "" && flags.String == "" && flags.List == "" && flags.Map == "" {
+	if inputFlags.File == "" && inputFlags.String == "" && inputFlags.List == "" && inputFlags.Map == "" {
 		return errors.New("at least one of --file, --string, --list or --map is required")
 	}
 
-	_, err := os.Stat(args[0])
-	if err != nil {
-		return err
+	for _, item := range strings.Split(args[0], ",") {
+		_, err = os.Stat(item)
+		if err != nil {
+			return
+		}
 	}
 
-	if flags.File != "" {
-		_, err = os.Stat(flags.File)
+	if inputFlags.File != "" {
+		_, err = os.Stat(inputFlags.File)
 	}
 
 	return err
 }
 
+var dictionary map[string]interface{}
+
+func substitute(name string) interface{} {
+	return dictionary[name]
+}
+
 func RunRoot(cmd *cobra.Command, args []string) (output string, err error) {
 
 	// Read file
-	var dictionary map[string]interface{}
-	if flags.File == "" {
+	if inputFlags.File == "" {
 		dictionary = make(map[string]interface{})
 	} else {
-		viper.SetConfigFile(flags.File)
+		viper.SetConfigFile(inputFlags.File)
 		err = viper.ReadInConfig()
 		if err != nil {
 			if _, IsUnsupportedExtension := err.(viper.UnsupportedConfigError); IsUnsupportedExtension {
@@ -69,21 +80,21 @@ func RunRoot(cmd *cobra.Command, args []string) (output string, err error) {
 	}
 
 	// Read --string
-	if flags.String != "" {
-		for _, envVar := range strings.Split(flags.String, ",") {
+	if inputFlags.String != "" {
+		for _, envVar := range strings.Split(inputFlags.String, ",") {
 			dictionary[envVar] = os.Getenv(envVar)
 		}
 	}
 
 	// Read --list
-	if flags.List != "" {
-		for _, envVar := range strings.Split(flags.List, ",") {
+	if inputFlags.List != "" {
+		for _, envVar := range strings.Split(inputFlags.List, ",") {
 			dictionary[envVar] = strings.Split(os.Getenv(envVar), ",")
 		}
 	}
 	// Read --map
-	if flags.Map != "" {
-		for _, envVar := range strings.Split(flags.Map, ",") {
+	if inputFlags.Map != "" {
+		for _, envVar := range strings.Split(inputFlags.Map, ",") {
 			tempMap := make(map[string]string)
 			for _, mapItem := range strings.Split(os.Getenv(envVar), ",") {
 				m := strings.Split(mapItem, "=")
@@ -98,25 +109,121 @@ func RunRoot(cmd *cobra.Command, args []string) (output string, err error) {
 		}
 	}
 
-	// Read and parse template
-	templateFile := args[0]
+	// Read and parse template files and directories
 	var tmpl *template.Template
-	tmpl, err = template.ParseFiles(templateFile)
-	if err != nil {
-		return
+	funcMaps := template.FuncMap{
+		"substitute": substitute,
 	}
 
-	// Execute template and print results
-	out := os.Stdout
-	if flags.Output != "" {
-		f, fErr := os.Create(flags.Output)
-		defer f.Close()
-		if fErr != nil {
+	// Input template
+	templateInput := args[0]
+	templateIsComplex := true // Assuming we have a list of files and directories
+	templateIsDir := false
+	if templateInfo, checkErr := os.Stat(templateInput); checkErr == nil {
+		templateIsDir = templateInfo.IsDir()
+		templateIsComplex = false
+	}
+
+	// Output path
+	outputIsDir := false
+	if inputFlags.Output != "" {
+		outputInfo, checkErr := os.Stat(inputFlags.Output)
+		outputExist := checkErr == nil
+		if outputExist {
+			outputIsDir = outputInfo.IsDir()
+		}
+
+		if (templateIsComplex || templateIsDir) && !outputExist {
+			err = os.Mkdir(inputFlags.Output, os.ModePerm)
+			if err != nil {
+				return
+			}
+		}
+		if (templateIsComplex || templateIsDir) && outputExist && !outputIsDir {
+			err = errors.New("cannot copy template folder into file")
 			return
 		}
-		out = f
 	}
-	err = tmpl.Execute(out, dictionary)
+
+	for _, templateFileOrDir := range strings.Split(templateInput, ",") {
+		err = filepath.Walk(templateFileOrDir, func(currentPath string, pathInfo os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			var destination string
+			out := os.Stdout
+			if inputFlags.Output != "" {
+				// (file-to-file) source is a simple file, destination is a folder or a file
+				if !templateIsComplex && !templateIsDir {
+					if pathInfo.IsDir() { // source is under multiple folders
+						return nil
+					}
+					if outputIsDir {
+						destination = filepath.Join(inputFlags.Output, filepath.Base(currentPath))
+					} else {
+						destination = inputFlags.Output
+					}
+				}
+				// (dir-to-dir) source is one directory, use the contents only
+				if !templateIsComplex && templateIsDir {
+					relativeRoot := filepath.Clean(templateFileOrDir)
+					cleanCurrentPath := filepath.Clean(currentPath)
+					if currentPath == templateFileOrDir || relativeRoot == cleanCurrentPath { // do not copy the source's root folder
+						return nil
+					}
+					relativePath := filepath.Clean(strings.Replace(cleanCurrentPath, relativeRoot, "", 1))
+					destination = filepath.Join(inputFlags.Output, relativePath)
+				}
+				// (multi-to-dir) source is a list of files and directories, copy source folders too
+				if templateIsComplex {
+					destination = filepath.Join(inputFlags.Output, currentPath)
+				}
+				// if the current path is a directory, create it at output (should only run when multi|dir-to-dir)
+				if pathInfo.IsDir() {
+					return os.Mkdir(destination, pathInfo.Mode())
+				}
+				// If extension does not match and we do not process all files in the template directory, then copy file and move on
+				if (templateIsComplex || templateIsDir) && !inputFlags.All && filepath.Ext(destination) != inputFlags.Extension {
+					return os.Link(currentPath, destination)
+				}
+				// Cut off .template extension
+				extension := filepath.Ext(destination)
+				if filepath.Ext(destination) == inputFlags.Extension {
+					destination = destination[0 : len(destination)-len(extension)]
+				}
+				// Create and open file
+				out, err = os.Create(destination)
+				defer out.Close()
+				if err != nil {
+					return err
+				}
+			} else { // Print to screen instead of file
+				// If the current path is a directory, move on
+				if pathInfo.IsDir() {
+					return nil
+				}
+				// If extension does not match and we do not process all files in the template directory, then print the file and move on
+				if (templateIsComplex || templateIsDir) && !inputFlags.All && filepath.Ext(currentPath) != inputFlags.Extension {
+					regularFileContent, openError := ioutil.ReadFile(currentPath)
+					_,_ = fmt.Fprint(out, regularFileContent)
+					return openError
+				}
+			}
+
+			// Prepare template reading
+			tmpl, err = template.New(filepath.Base(currentPath)).Funcs(funcMaps).ParseFiles(currentPath)
+			if err != nil {
+				return err
+			}
+
+			// Execute template and print results to destination output
+			return tmpl.Execute(out, dictionary)
+		})
+		if err != nil {
+			return
+		}
+	}
 
 	return
 }
@@ -140,11 +247,13 @@ Source and documentation is available at https://github.com/freshautomations/ste
 		Run:  runRootWrapper,
 	}
 	rootCmd.Use = "stemplate <template>"
-	pflag.StringVarP(&flags.Output, "output", "o", "", "Send results to this file instead of stdout")
-	pflag.StringVarP(&flags.File, "file", "f", "", "Filename that contains data structure")
-	pflag.StringVarP(&flags.String, "string", "s", "", "Comma-separated list of environment variable names that contain strings")
-	pflag.StringVarP(&flags.List, "list", "l", "", "Comma-separated list of environment variable names that contain comma-separated strings")
-	pflag.StringVarP(&flags.Map, "map", "m", "", "Comma-separated list of environment variable names that contain comma-separated strings of key=value pairs")
+	pflag.StringVarP(&inputFlags.Output, "output", "o", "", "Send results to this file instead of stdout")
+	pflag.StringVarP(&inputFlags.File, "file", "f", "", "Filename that contains data structure")
+	pflag.StringVarP(&inputFlags.String, "string", "s", "", "Comma-separated list of environment variable names that contain strings")
+	pflag.StringVarP(&inputFlags.List, "list", "l", "", "Comma-separated list of environment variable names that contain comma-separated strings")
+	pflag.StringVarP(&inputFlags.Map, "map", "m", "", "Comma-separated list of environment variable names that contain comma-separated strings of key=value pairs")
+	pflag.StringVarP(&inputFlags.Extension, "extension", "t", ".template", "Extension for template files when template input or output is a directory. Default: .template")
+	pflag.BoolVarP(&inputFlags.All, "all", "a", false, "Consider all files in a directory templates, regardless of extension.")
 	_ = rootCmd.MarkFlagFilename("file")
 
 	return rootCmd.Execute()
