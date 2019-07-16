@@ -58,31 +58,37 @@ func substitute(name string) interface{} {
 	return dictionary[name]
 }
 
-func counter(input interface{}) interface{} {
+func counter(input interface{}) (result []uint64, err error) {
 	var num uint64
+	// JSON represents numbers as float64
 	if numf64, ok := input.(float64); ok {
 		num = uint64(numf64)
 	} else {
-		if numi, ok := input.(uint64); ok {
-			num = numi
+		// YAML represents numbers as int
+		if numi, ok := input.(int); ok {
+			num = uint64(numi)
 		} else {
-			if nums, ok := input.(string); ok {
-				var err error
-				num, err = strconv.ParseUint(nums, 10, 64)
-				if err != nil {
-					panic(err)
-				}
+			// TOML represents numbers as int64
+			if numi, ok := input.(int64); ok {
+				num = uint64(numi)
 			} else {
-				panic(errors.New(fmt.Sprintf("cannot convert input to number: %s", input)))
+				if nums, ok := input.(string); ok {
+					num, err = strconv.ParseUint(nums, 10, 64)
+					if err != nil {
+						return
+					}
+				} else {
+					err = errors.New(fmt.Sprintf("cannot convert input to number: %s", input))
+					return
+				}
 			}
 		}
 	}
-	var result []uint64
 	var i uint64
 	for i = 0 ; i < num ; i++ {
 		result = append(result, i)
 	}
-	return result
+	return
 }
 
 func RunRoot(cmd *cobra.Command, args []string) (output string, err error) {

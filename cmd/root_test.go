@@ -84,6 +84,8 @@ func TestRunRoot(t *testing.T) {
 	inputFlags.File = filepath.Join(rootDir, "test_dictionaries","test.yaml")
 	_, err = RunRoot(cmd, []string{filepath.Join(rootDir, "test_templates","test.template")})
 	assert.Nil(t, err, "unexpected error")
+	resultfile, err = ioutil.ReadFile(inputFlags.Output)
+	assert.Nil(t, err, "unexpected error")
 	assert.Equal(t, testresult, string(resultfile), "unexpected result")
 	_ = os.Remove(inputFlags.Output)
 
@@ -148,8 +150,28 @@ func TestCustomFunctions(t *testing.T) {
 	inputFlags.Extension = ".template"
 
 	// JSON test
-	inputFlags.Output = rootDir + "customfunctions_jsonresult.tmp"
+	inputFlags.Output = filepath.Join(rootDir, "customfunctions_jsonresult.tmp")
 	inputFlags.File = filepath.Join(rootDir, "test_dictionaries","test.json")
+	_, err = RunRoot(cmd, []string{filepath.Join(rootDir, "test_templates2","customfunctions.template")})
+	assert.Nil(t, err, "unexpected error")
+	resultfile, err = ioutil.ReadFile(inputFlags.Output)
+	assert.Nil(t, err, "unexpected error")
+	assert.Equal(t, testcustomfunctionsresult, string(resultfile), "unexpected result")
+	_ = os.Remove(inputFlags.Output)
+
+	// TOML test
+	inputFlags.Output = filepath.Join(rootDir, "customfunctions_tomlresult.tmp")
+	inputFlags.File = filepath.Join(rootDir, "test_dictionaries","test.toml")
+	_, err = RunRoot(cmd, []string{filepath.Join(rootDir, "test_templates2","customfunctions.template")})
+	assert.Nil(t, err, "unexpected error")
+	resultfile, err = ioutil.ReadFile(inputFlags.Output)
+	assert.Nil(t, err, "unexpected error")
+	assert.Equal(t, testcustomfunctionsresult, string(resultfile), "unexpected result")
+	_ = os.Remove(inputFlags.Output)
+
+	// YAML test
+	inputFlags.Output = filepath.Join(rootDir, "customfunctions_yamlresult.tmp")
+	inputFlags.File = filepath.Join(rootDir, "test_dictionaries","test.yaml")
 	_, err = RunRoot(cmd, []string{filepath.Join(rootDir, "test_templates2","customfunctions.template")})
 	assert.Nil(t, err, "unexpected error")
 	resultfile, err = ioutil.ReadFile(inputFlags.Output)

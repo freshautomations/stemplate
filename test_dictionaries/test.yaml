@@ -15,3 +15,6 @@ map:
 gospecific:
     - Go
     - lang
+
+number_test: 5
+substitute_test: "map"

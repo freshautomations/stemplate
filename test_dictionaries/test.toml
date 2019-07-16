@@ -1,5 +1,7 @@
 user = "guest"
 filename = "test"
+number_test = 5
+substitute_test = "map"
 list = [
     "first",
     "second",
