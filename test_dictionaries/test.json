@@ -13,5 +13,7 @@
   "gospecific": [
     "Go",
     "lang"
-  ]
+  ],
+  "substitute_test": "map",
+  "number_test": 5
 }

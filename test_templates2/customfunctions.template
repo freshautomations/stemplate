@@ -1,0 +1,6 @@
+Hi,
+
+Welcome to custom functions demonstration.
+
+* substitute variable: {{ index (substitute .substitute_test) "test" }}
+* count 0-4 using counter:{{ range counter .number_test }} {{.}}{{end}}

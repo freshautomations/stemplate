@@ -20,6 +20,15 @@ You should see a few examples of
 * Golang specific stuff
 `
 
+var testcustomfunctionsresult = `Hi,
+
+Welcome to custom functions demonstration.
+
+* substitute variable: testmap
+* count 0-4 using counter: 0 1 2 3 4
+`
+
+// rootDir has to be ".." for CircleCI to work correctly.
 var rootDir = ".."
 
 func TestCheckArgs(t *testing.T) {
@@ -30,11 +39,11 @@ func TestCheckArgs(t *testing.T) {
 		Version: defaults.Version,
 	}
 
-	assert.NotNil(t, CheckArgs(cmd, []string{rootDir + "/test_templates/test.template", "../test.json"}), "enough parameters")
+	assert.NotNil(t, CheckArgs(cmd, []string{filepath.Join(rootDir, "test_templates", " test.template"), filepath.Join("..", "test.json")}), "enough parameters")
 	assert.NotNil(t, CheckArgs(cmd, []string{"notexist.json"}), "file found")
-	assert.NotNil(t, CheckArgs(cmd, []string{rootDir + "/test_templates/test.template"}), "file found")
-	inputFlags.File = rootDir + "/test_dictionaries/test.json"
-	assert.Nil(t, CheckArgs(cmd, []string{rootDir + "/test_templates/test.template"}), "parameter check")
+	assert.NotNil(t, CheckArgs(cmd, []string{filepath.Join(rootDir, "test_templates", "test.template")}), "file found")
+	inputFlags.File = filepath.Join(rootDir, "test_dictionaries", "test.json")
+	assert.Nil(t, CheckArgs(cmd, []string{filepath.Join(rootDir, "test_templates", "test.template")}), "parameter check")
 }
 
 func TestRunRoot(t *testing.T) {
@@ -52,8 +61,8 @@ func TestRunRoot(t *testing.T) {
 
 	// JSON test
 	inputFlags.Output = "jsonresult.tmp"
-	inputFlags.File = rootDir + "/test_dictionaries/test.json"
-	_, err = RunRoot(cmd, []string{rootDir + "/test_templates/test.template"})
+	inputFlags.File = filepath.Join(rootDir, "test_dictionaries","test.json")
+	_, err = RunRoot(cmd, []string{filepath.Join(rootDir, "test_templates", "test.template")})
 	assert.Nil(t, err, "unexpected error")
 	resultfile, err = ioutil.ReadFile(inputFlags.Output)
 	assert.Nil(t, err, "unexpected error")
@@ -62,8 +71,8 @@ func TestRunRoot(t *testing.T) {
 
 	// TOML test
 	inputFlags.Output = "tomlresult.tmp"
-	inputFlags.File = rootDir + "/test_dictionaries/test.toml"
-	_, err = RunRoot(cmd, []string{rootDir + "/test_templates/test.template"})
+	inputFlags.File = filepath.Join(rootDir, "test_dictionaries","test.toml")
+	_, err = RunRoot(cmd, []string{filepath.Join(rootDir, "test_templates", "test.template")})
 	assert.Nil(t, err, "unexpected error")
 	resultfile, err = ioutil.ReadFile(inputFlags.Output)
 	assert.Nil(t, err, "unexpected error")
@@ -72,8 +81,8 @@ func TestRunRoot(t *testing.T) {
 
 	// YAML test
 	inputFlags.Output = "yamlresult.tmp"
-	inputFlags.File = rootDir + "/test_dictionaries/test.yaml"
-	_, err = RunRoot(cmd, []string{rootDir + "/test_templates/test.template"})
+	inputFlags.File = filepath.Join(rootDir, "test_dictionaries","test.yaml")
+	_, err = RunRoot(cmd, []string{filepath.Join(rootDir, "test_templates","test.template")})
 	assert.Nil(t, err, "unexpected error")
 	assert.Equal(t, testresult, string(resultfile), "unexpected result")
 	_ = os.Remove(inputFlags.Output)
@@ -89,7 +98,7 @@ func TestRunRoot(t *testing.T) {
 	_ = os.Setenv("list", "first,second,third")
 	_ = os.Setenv("gospecific", "Go,lang")
 	_ = os.Setenv("map", "test=testmap,nottest='not a testmap'")
-	_, err = RunRoot(cmd, []string{rootDir + "/test_templates/test.template"})
+	_, err = RunRoot(cmd, []string{filepath.Join(rootDir, "test_templates","test.template")})
 	assert.Nil(t, err, "unexpected error")
 	assert.Equal(t, testresult, string(resultfile), "unexpected result")
 	_ = os.Remove(inputFlags.Output)
@@ -98,11 +107,11 @@ func TestRunRoot(t *testing.T) {
 	inputFlags.Map = ""
 
 	// Output is a directory test
-	inputFlags.Output = rootDir + "/outputdir1"
-	inputFlags.File = rootDir + "/test_dictionaries/test.json"
+	inputFlags.Output = filepath.Join(rootDir, "outputdir1")
+	inputFlags.File = filepath.Join(rootDir, "test_dictionaries","test.json")
 	err = os.Mkdir(inputFlags.Output, os.ModePerm)
 	assert.Nil(t, err, "unexpected error during folder creation")
-	_, err = RunRoot(cmd, []string{rootDir + "/test_templates/test.template"})
+	_, err = RunRoot(cmd, []string{filepath.Join(rootDir, "test_templates","test.template")})
 	assert.Nil(t, err, "unexpected error")
 	resultfile, err = ioutil.ReadFile(filepath.Join(inputFlags.Output, "test"))
 	assert.Equal(t, testresult, string(resultfile), "unexpected result")
@@ -111,16 +120,41 @@ func TestRunRoot(t *testing.T) {
 	_ = os.Remove(inputFlags.Output)
 
 	// Input template is a folder, output is a directory test
-	inputFlags.Output = rootDir + "/outputdir2"
-	inputFlags.File = rootDir + "/test_dictionaries/test.json"
+	inputFlags.Output = filepath.Join(rootDir, "outputdir2")
+	inputFlags.File = filepath.Join(rootDir, "test_dictionaries","test.json")
 	err = os.Mkdir(inputFlags.Output, os.ModePerm)
 	assert.Nil(t, err, "unexpected error during folder creation")
-	_, err = RunRoot(cmd, []string{rootDir + "/test_templates"})
+	_, err = RunRoot(cmd, []string{filepath.Join(rootDir, "test_templates")})
 	assert.Nil(t, err, "unexpected error")
 	resultfile, err = ioutil.ReadFile(filepath.Join(inputFlags.Output, "test"))
 	assert.Equal(t, testresult, string(resultfile), "unexpected result")
 	assert.Nil(t, err, "unexpected error")
 	_ = os.Remove(filepath.Join(inputFlags.Output, "test"))
+	_ = os.Remove(inputFlags.Output)
+
+}
+
+func TestCustomFunctions(t *testing.T) {
+	cmd := &cobra.Command{
+		Args: func(cmd *cobra.Command, args []string) error {
+			return nil
+		},
+		Version: defaults.Version,
+	}
+
+	var resultfile []byte
+	var err error
+
+	inputFlags.Extension = ".template"
+
+	// JSON test
+	inputFlags.Output = rootDir + "customfunctions_jsonresult.tmp"
+	inputFlags.File = filepath.Join(rootDir, "test_dictionaries","test.json")
+	_, err = RunRoot(cmd, []string{filepath.Join(rootDir, "test_templates2","customfunctions.template")})
+	assert.Nil(t, err, "unexpected error")
+	resultfile, err = ioutil.ReadFile(inputFlags.Output)
+	assert.Nil(t, err, "unexpected error")
+	assert.Equal(t, testcustomfunctionsresult, string(resultfile), "unexpected result")
 	_ = os.Remove(inputFlags.Output)
 
 }

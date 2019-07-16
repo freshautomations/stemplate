@@ -55,6 +55,65 @@ If the same variable name is used in both the file and an environment variable, 
 Optionally, you can use the `--output` or `-o` flags to add a file where the result will be written,
 instead of the default `stdout`.
 
+### Special functions
+STemplate introduces special functions to make templates more versatile.
+
+#### substitute
+Transform a variable's content to variable name. (Something like *.(.var)* would be, if it was valid.) For example:
+
+Dictionary file `test.yaml`:
+```yaml
+environment: dev
+
+dev:
+    description: "developer's environment"
+    account_id: 0
+
+prod:
+    description: "production environment - exercise caution"
+    account_id: 1
+```
+
+Template file `test.template`:
+```gotemplate
+This environment is the {{ index (substitute .environment) "description" }}.
+```
+
+Run:
+```bash
+stemplate test.template --file test.yaml
+```
+
+Result:
+```gotemplate
+This environment is the developer's environment.
+```
+
+Note: `(.environment | substitute)` is also valid. Use whichever makes the code more readable.
+
+#### counter
+Create a list of numbers, starting with 0. (Something like `range [5]int{}` in Go but with a variable instead of a constant.) Useful for the `range` function. For example:
+
+Dictionary file `test.yaml`:
+```yaml
+howmany: 3
+```
+
+Template file `test.template`:
+```gotemplate
+Write some dots {{- range counter .howmany }}.{{end}}
+```
+
+Run:
+```bash
+stemplate test.template --file test.yaml
+```
+
+Result:
+```gotemplate
+Write some dots...
+```
+
 ## Caveats
 Using the `--file` parameter will allow the full extent of the Golang text/template package to be used, while using environment variables will only allow string values.
 
@@ -62,7 +121,7 @@ Using the `--file` parameter will allow the full extent of the Golang text/templ
 
 ## Using `--file`
 Template file `test.template`:
-```
+```gotemplate
 Hi {{ .user }}!
 
 Welcome to this {{ .filename }} template demonstration.
@@ -98,7 +157,7 @@ stemplate test.template --file test.yaml --output result.txt
 ```
 
 Result in `result.txt`:
-```
+```gotemplate
 Hi guest!
 
 Welcome to this test template demonstration.

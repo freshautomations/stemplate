@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -55,6 +56,14 @@ var dictionary map[string]interface{}
 
 func substitute(name string) interface{} {
 	return dictionary[name]
+}
+
+func counter(num float64) interface{} {
+	var result []int
+	for i := 0 ; i < int(math.Floor(num)) ; i++ {
+		result = append(result, i)
+	}
+	return result
 }
 
 func RunRoot(cmd *cobra.Command, args []string) (output string, err error) {
@@ -113,6 +122,7 @@ func RunRoot(cmd *cobra.Command, args []string) (output string, err error) {
 	var tmpl *template.Template
 	funcMaps := template.FuncMap{
 		"substitute": substitute,
+		"counter": counter,
 	}
 
 	// Input template
