@@ -26,6 +26,12 @@ Welcome to custom functions demonstration.
 
 * substitute variable: testmap
 * count 0-4 using counter: 0 1 2 3 4
+* addition 3 + 5: 8
+* substraction 8 - 2: 6
+* left "abcdefg" 3: abc
+* right "abcdefg" 3: efg
+* string cut the last char from "abcdefg": abcdef
+* mid "abcdefg" 3 2: de
 `
 
 // rootDir has to be ".." for CircleCI to work correctly.

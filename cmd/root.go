@@ -52,6 +52,31 @@ func CheckArgs(cmd *cobra.Command, args []string) (err error) {
 	return err
 }
 
+func interface2uint64(input interface{}) (uint64, error) {
+	// Might be the right type already
+	if xnum, ok := input.(uint64); ok {
+		return xnum, nil
+	}
+	// JSON represents numbers as float64
+	if xnum, ok := input.(float64); ok {
+		return uint64(xnum), nil
+	}
+	// YAML represents numbers as int
+	if xnum, ok := input.(int); ok {
+		return uint64(xnum), nil
+	}
+	// TOML represents numbers as int64
+	if xnum, ok := input.(int64); ok {
+		return uint64(xnum), nil
+	}
+	// Some users might quote their numbers
+	if xnum, ok := input.(string); ok {
+		num, err := strconv.ParseUint(xnum, 10, 64)
+			return num, err
+	}
+	return 0, errors.New(fmt.Sprintf("cannot convert input to number: %s", input))
+}
+
 var dictionary map[string]interface{}
 
 func substitute(name string) interface{} {
@@ -60,34 +85,67 @@ func substitute(name string) interface{} {
 
 func counter(input interface{}) (result []uint64, err error) {
 	var num uint64
-	// JSON represents numbers as float64
-	if numf64, ok := input.(float64); ok {
-		num = uint64(numf64)
-	} else {
-		// YAML represents numbers as int
-		if numi, ok := input.(int); ok {
-			num = uint64(numi)
-		} else {
-			// TOML represents numbers as int64
-			if numi, ok := input.(int64); ok {
-				num = uint64(numi)
-			} else {
-				if nums, ok := input.(string); ok {
-					num, err = strconv.ParseUint(nums, 10, 64)
-					if err != nil {
-						return
-					}
-				} else {
-					err = errors.New(fmt.Sprintf("cannot convert input to number: %s", input))
-					return
-				}
-			}
-		}
-	}
+	num, err = interface2uint64(input)
 	var i uint64
 	for i = 0 ; i < num ; i++ {
 		result = append(result, i)
 	}
+	return
+}
+
+func left(s string, input interface{}) (string, error) {
+	i, err := interface2uint64(input)
+	if err != nil {
+		return "", err
+	}
+	return s[0:i], err
+}
+
+func right(s string, input interface{}) (string, error) {
+	i, err := interface2uint64(input)
+	if err != nil {
+		return "", err
+	}
+	return s[len(s)-int(i):], err
+}
+
+func mid(s string, inputb interface{}, inputl interface{}) (string, error) {
+	b, err := interface2uint64(inputb)
+	if err != nil {
+		return "", err
+	}
+	l, err := interface2uint64(inputl)
+	if err != nil {
+		return "", err
+	}
+	return s[b:b+l], err
+}
+
+func add(a interface{}, b interface{}) (result uint64, err error) {
+	var ax, bx uint64
+	ax, err = interface2uint64(a)
+	if err != nil {
+		return
+	}
+	bx, err = interface2uint64(b)
+	if err != nil {
+		return
+	}
+	result = ax + bx
+	return
+}
+
+func sub(a interface{}, b interface{}) (result uint64, err error) {
+	var ax, bx uint64
+	ax, err = interface2uint64(a)
+	if err != nil {
+		return
+	}
+	bx, err = interface2uint64(b)
+	if err != nil {
+		return
+	}
+	result = ax - bx
 	return
 }
 
@@ -148,6 +206,11 @@ func RunRoot(cmd *cobra.Command, args []string) (output string, err error) {
 	funcMaps := template.FuncMap{
 		"substitute": substitute,
 		"counter": counter,
+		"left": left,
+		"right": right,
+		"mid": mid,
+		"add": add,
+		"sub": sub,
 	}
 
 	// Input template

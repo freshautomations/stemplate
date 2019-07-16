@@ -4,3 +4,9 @@ Welcome to custom functions demonstration.
 
 * substitute variable: {{ index (substitute .substitute_test) "test" }}
 * count 0-4 using counter:{{ range counter .number_test }} {{.}}{{end}}
+* addition 3 + 5: {{ add 3 5 }}
+* substraction 8 - 2: {{ sub 8 2 }}
+* left "abcdefg" 3: {{ left "abcdefg" 3 }}
+* right "abcdefg" 3: {{ right "abcdefg" 3 }}
+* {{ $str := "abcdefg" }}string cut the last char from "{{$str}}": {{ left $str (sub (len $str) 1) }}
+* mid "abcdefg" 3 2: {{ mid "abcdefg" 3 2 }}
