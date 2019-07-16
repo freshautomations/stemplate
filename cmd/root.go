@@ -9,9 +9,9 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"io/ioutil"
-	"math"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 )
@@ -58,9 +58,28 @@ func substitute(name string) interface{} {
 	return dictionary[name]
 }
 
-func counter(num float64) interface{} {
-	var result []int
-	for i := 0 ; i < int(math.Floor(num)) ; i++ {
+func counter(input interface{}) interface{} {
+	var num uint64
+	if numf64, ok := input.(float64); ok {
+		num = uint64(numf64)
+	} else {
+		if numi, ok := input.(uint64); ok {
+			num = numi
+		} else {
+			if nums, ok := input.(string); ok {
+				var err error
+				num, err = strconv.ParseUint(nums, 10, 64)
+				if err != nil {
+					panic(err)
+				}
+			} else {
+				panic(errors.New(fmt.Sprintf("cannot convert input to number: %s", input)))
+			}
+		}
+	}
+	var result []uint64
+	var i uint64
+	for i = 0 ; i < num ; i++ {
 		result = append(result, i)
 	}
 	return result
