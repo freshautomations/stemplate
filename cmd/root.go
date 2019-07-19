@@ -17,6 +17,7 @@ import (
 )
 
 type FlagsType struct {
+	Env       bool
 	File      string
 	String    string
 	List      string
@@ -34,8 +35,8 @@ func CheckArgs(cmd *cobra.Command, args []string) (err error) {
 		return
 	}
 
-	if inputFlags.File == "" && inputFlags.String == "" && inputFlags.List == "" && inputFlags.Map == "" {
-		return errors.New("at least one of --file, --string, --list or --map is required")
+	if inputFlags.File == "" && inputFlags.String == "" && inputFlags.List == "" && inputFlags.Map == "" && ! inputFlags.Env {
+		return errors.New("at least one of --file, --string, --list --env or --map is required")
 	}
 
 	for _, item := range strings.Split(args[0], ",") {
@@ -150,11 +151,26 @@ func sub(a interface{}, b interface{}) (result uint64, err error) {
 }
 
 func RunRoot(cmd *cobra.Command, args []string) (output string, err error) {
+// Priorities least to most: env, file, string, list, map
 
-	// Read file
-	if inputFlags.File == "" {
-		dictionary = make(map[string]interface{})
-	} else {
+	dictionary = make(map[string]interface{})
+
+	// Read --env
+	if inputFlags.Env {
+		for _, envVar := range os.Environ() {
+			equals := strings.Index(envVar,"=")
+			if equals < 1 || equals==len(envVar) {
+				// Invalid string
+				continue
+			}
+			name := envVar[0:equals]
+			value := envVar[equals+1:]
+			dictionary[name] = value
+		}
+	}
+
+	// Read --file
+	if inputFlags.File != "" {
 		viper.SetConfigFile(inputFlags.File)
 		err = viper.ReadInConfig()
 		if err != nil {
@@ -168,7 +184,11 @@ func RunRoot(cmd *cobra.Command, args []string) (output string, err error) {
 				return
 			}
 		}
-		dictionary = viper.AllSettings()
+		for k, v := range viper.AllSettings() {
+			if dictionary[k] == nil {
+				dictionary[k] = v
+			}
+		}
 	}
 
 	// Read --string
@@ -352,6 +372,7 @@ Source and documentation is available at https://github.com/freshautomations/ste
 	pflag.StringVarP(&inputFlags.Map, "map", "m", "", "Comma-separated list of environment variable names that contain comma-separated strings of key=value pairs")
 	pflag.StringVarP(&inputFlags.Extension, "extension", "t", ".template", "Extension for template files when template input or output is a directory. Default: .template")
 	pflag.BoolVarP(&inputFlags.All, "all", "a", false, "Consider all files in a directory templates, regardless of extension.")
+	pflag.BoolVarP(&inputFlags.Env, "env", "e", false, "Import all environment variables for templates as strings.")
 	_ = rootCmd.MarkFlagFilename("file")
 
 	return rootCmd.Execute()

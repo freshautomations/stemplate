@@ -34,6 +34,12 @@ Welcome to custom functions demonstration.
 * mid "abcdefg" 3 2: de
 `
 
+var testenvresult = `--env test
+
+* From the env.var hellotest: helloresult
+* From the env.var ANOTHER_TEST: ANOTHER_RESULT
+`
+
 // rootDir has to be ".." for CircleCI to work correctly.
 var rootDir = ".."
 
@@ -52,17 +58,15 @@ func TestCheckArgs(t *testing.T) {
 	assert.Nil(t, CheckArgs(cmd, []string{filepath.Join(rootDir, "test_templates", "test.template")}), "parameter check")
 }
 
-func TestRunRoot(t *testing.T) {
+func TestRunRootSimpleFiles(t *testing.T) {
 	cmd := &cobra.Command{
 		Args: func(cmd *cobra.Command, args []string) error {
 			return nil
 		},
 		Version: defaults.Version,
 	}
-
 	var resultfile []byte
 	var err error
-
 	inputFlags.Extension = ".template"
 
 	// JSON test
@@ -114,6 +118,19 @@ func TestRunRoot(t *testing.T) {
 	inputFlags.List = ""
 	inputFlags.Map = ""
 
+}
+
+func TestRunRootOutputDirectory(t *testing.T) {
+	cmd := &cobra.Command{
+		Args: func(cmd *cobra.Command, args []string) error {
+			return nil
+		},
+		Version: defaults.Version,
+	}
+	var resultfile []byte
+	var err error
+	inputFlags.Extension = ".template"
+
 	// Output is a directory test
 	inputFlags.Output = filepath.Join(rootDir, "outputdir1")
 	inputFlags.File = filepath.Join(rootDir, "test_dictionaries","test.json")
@@ -126,6 +143,19 @@ func TestRunRoot(t *testing.T) {
 	assert.Nil(t, err, "unexpected error")
 	_ = os.Remove(filepath.Join(inputFlags.Output, "test"))
 	_ = os.Remove(inputFlags.Output)
+
+}
+
+func TestRunRootInputDirectory(t *testing.T) {
+	cmd := &cobra.Command{
+		Args: func(cmd *cobra.Command, args []string) error {
+			return nil
+		},
+		Version: defaults.Version,
+	}
+	var resultfile []byte
+	var err error
+	inputFlags.Extension = ".template"
 
 	// Input template is a folder, output is a directory test
 	inputFlags.Output = filepath.Join(rootDir, "outputdir2")
@@ -183,6 +213,51 @@ func TestCustomFunctions(t *testing.T) {
 	resultfile, err = ioutil.ReadFile(inputFlags.Output)
 	assert.Nil(t, err, "unexpected error")
 	assert.Equal(t, testcustomfunctionsresult, string(resultfile), "unexpected result")
+	_ = os.Remove(inputFlags.Output)
+
+}
+
+func TestEnvParam(t *testing.T) {
+	cmd := &cobra.Command{
+		Args: func(cmd *cobra.Command, args []string) error {
+			return nil
+		},
+		Version: defaults.Version,
+	}
+
+	var resultfile []byte
+	var err error
+
+	inputFlags.Extension = ".template"
+	inputFlags.Env = true
+	os.Setenv("hellotest","helloresult")
+	os.Setenv("ANOTHER_TEST", "ANOTHER_RESULT")
+
+	// JSON test
+	inputFlags.Output = filepath.Join(rootDir, "env_jsonresult.tmp")
+	_, err = RunRoot(cmd, []string{filepath.Join(rootDir, "test_templates2","env.template")})
+	assert.Nil(t, err, "unexpected error")
+	resultfile, err = ioutil.ReadFile(inputFlags.Output)
+	assert.Nil(t, err, "unexpected error")
+	assert.Equal(t, testenvresult, string(resultfile), "unexpected result")
+	_ = os.Remove(inputFlags.Output)
+
+	// TOML test
+	inputFlags.Output = filepath.Join(rootDir, "env_tomlresult.tmp")
+	_, err = RunRoot(cmd, []string{filepath.Join(rootDir, "test_templates2","env.template")})
+	assert.Nil(t, err, "unexpected error")
+	resultfile, err = ioutil.ReadFile(inputFlags.Output)
+	assert.Nil(t, err, "unexpected error")
+	assert.Equal(t, testenvresult, string(resultfile), "unexpected result")
+	_ = os.Remove(inputFlags.Output)
+
+	// YAML test
+	inputFlags.Output = filepath.Join(rootDir, "env_yamlresult.tmp")
+	_, err = RunRoot(cmd, []string{filepath.Join(rootDir, "test_templates2","env.template")})
+	assert.Nil(t, err, "unexpected error")
+	resultfile, err = ioutil.ReadFile(inputFlags.Output)
+	assert.Nil(t, err, "unexpected error")
+	assert.Equal(t, testenvresult, string(resultfile), "unexpected result")
 	_ = os.Remove(inputFlags.Output)
 
 }
