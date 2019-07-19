@@ -25,17 +25,21 @@ GO111MODULE=on go get github.com/freshautomations/stemplate.git
 ```
 
 ## How to use
-```$bash
+```bash
 stemplate my.template --file dictionary.json
 ```
 OR
-```$bash
+```bash
 export envvar1="value1"
 export envvar2="value2"
 export envlist1="listitem1,listitem2"
 export envlist2="listitem3"
 export envmap1="mapkey1=mapvalue1,mapkey2=mapvalue2"
 stemplate my.template --string envvar1,envvar2 --list envlist1,envlist2 --map envmap1
+```
+OR
+```bash
+stemplate my.template --env
 ```
 
 Check the [examples](#examples) section for more.
@@ -44,6 +48,7 @@ Check the [examples](#examples) section for more.
 * `--string` will evaluate the content of the environment variables as a string.
 * `--list` will evaluate the content of the environment variables as a comma-separated list of strings.
 * `--map` will evaluate the content of the environment variables as a comma-separated list of key-value pairs where both key and value are strings.
+* `--env` will evaluate _all_ environment variables as strings.
 
 When using the `--file` parameter, the dictionary file can contain complex variable definitions, like maps within a list.
 
@@ -51,6 +56,11 @@ When using environment variables with any of the `--string`, `--list` or `--map`
 
 When using both `--file` and any of the environment variables flags, the resultant data structure is the combination of both data sets.
 If the same variable name is used in both the file and an environment variable, the environment variable will take precedence.
+
+When using the `--env` option, all environment variables will be evaluated as strings. This has the lowest precedence and
+all other options will overwrite what was received from the environment by this flag.
+
+In short, precedence from lowest to highest: `--env`, `--file`, `--string`, `--list`, `--map`.
 
 Optionally, you can use the `--output` or `-o` flags to add a file where the result will be written,
 instead of the default `stdout`.

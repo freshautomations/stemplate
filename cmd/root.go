@@ -252,7 +252,7 @@ func RunRoot(cmd *cobra.Command, args []string) (output string, err error) {
 		}
 
 		if (templateIsComplex || templateIsDir) && !outputExist {
-			err = os.Mkdir(inputFlags.Output, os.ModePerm)
+			err = os.MkdirAll(inputFlags.Output, os.ModePerm)
 			if err != nil {
 				return
 			}
@@ -299,7 +299,7 @@ func RunRoot(cmd *cobra.Command, args []string) (output string, err error) {
 				}
 				// if the current path is a directory, create it at output (should only run when multi|dir-to-dir)
 				if pathInfo.IsDir() {
-					return os.Mkdir(destination, pathInfo.Mode())
+					return os.MkdirAll(destination, pathInfo.Mode())
 				}
 				// If extension does not match and we do not process all files in the template directory, then copy file and move on
 				if (templateIsComplex || templateIsDir) && !inputFlags.All && filepath.Ext(destination) != inputFlags.Extension {
